@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Input } from "antd";
 import "antd/dist/antd.css";
-import "font-awesome/css/font-awesome.min.css";
+// import "font-awesome/css/font-awesome.min.css";
 import Header from "./Header";
 import Messages from "./Messages";
 import List from "./List";
