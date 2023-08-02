@@ -21,6 +21,12 @@
       "type": "string",
       "required": true,
       "unique": true
+    },
+    "chatrooms": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::chatroom.chatroom",
+      "mappedBy": "active_users"
     }
   }
 }

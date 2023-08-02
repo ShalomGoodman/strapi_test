@@ -19,6 +19,17 @@
     "message": {
       "type": "string",
       "required": true
+    },
+    "chatroom": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::chatroom.chatroom",
+      "inversedBy": "messages"
+    },
+    "active_user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::active-user.active-user"
     }
   }
 }

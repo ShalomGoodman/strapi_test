@@ -42,7 +42,7 @@ export default function Chat() {
   return (
     <div>
       {done == "done" && userr === "done" ? ( // Waiting for access to be granted
-        <ChatRoom username={username} id={id} />
+        <ChatRoom username={username} id={2} />
       ) : (
         <h1>Verifying token..... Please wait</h1>
       )}

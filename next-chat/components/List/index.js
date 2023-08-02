@@ -4,7 +4,10 @@ import { List as AntdList, Avatar } from "antd";
 import socket from "socket.io-client";
 
 function List(props) {
+  
   const users = props.users.data;
+
+
   const handleClick = async (id, socketid) => {
     const io = socket("http://localhost:1337");
     await fetch("http://localhost:1337/api/active-users/" + id, {

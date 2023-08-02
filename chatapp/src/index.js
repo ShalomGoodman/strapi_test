@@ -1,24 +1,8 @@
 "use strict";
 
-const { default: axios } = require("axios");
+const axios = require("axios");
 
 module.exports = {
-  /**
-   * An asynchronous register function that runs before
-   * your application is initialized.
-   *
-   * This gives you an opportunity to extend code.
-   */
-  register({ strapi }) {},
-
-  /**
-   * An asynchronous bootstrap function that runs before
-   * your application gets started.
-   *
-   * This gives you an opportunity to set up your data model,
-   * run jobs, or perform some special logic.
-   */
-
   bootstrap(/* { strapi } */) {
     var io = require("socket.io")(strapi.server.httpServer, {
       cors: {
@@ -28,55 +12,88 @@ module.exports = {
         credentials: true,
       },
     });
+
     io.on("connection", function (socket) {
-      socket.on("join", async ({ username }) => {
-        console.log("user connected");
-        console.log("username is ", username);
-        if (username) {
-          socket.join("group");
-          socket.emit("welcome", {
-            user: "bot",
-            text: `${username}, Welcome to the group chat`,
-            userData: username,
-          });
-          let strapiData = {
-            data: {
-              users: username,
-              socketid: socket.id,
-            },
-          };
-          await axios
-            .post("http://localhost:1337/api/active-users", strapiData)
-            .then(async (e) => {
-              socket.emit("roomData", { done: "true" });
-            })
-            .catch((e) => {
-              if (e.message == "Request failed with status code 400") {
-                socket.emit("roomData", { done: "existing" });
-              }
-            });
-        } else {
-          console.log("e no work");
+      // This holds the username and active chatroom for this connection
+      const userState = { username: null, chatroom: null };
+
+      socket.on("join", async ({ username, chatroom }) => {
+        if (!username || !chatroom) {
+          console.log("Missing username or chatroom for join event");
+          return;
         }
-      });
-      socket.on("sendMessage", async (data) => {
+
+        console.log(`${username} connected to ${chatroom}`);
+        socket.join(chatroom);
+        userState.username = username;
+        userState.chatroom = chatroom;
+
+        socket.emit("welcome", {
+          user: "bot",
+          text: `Hello ${username}, You are in room: ${chatroom}`,
+        });
+
         let strapiData = {
           data: {
-            user: data.user,
-            message: data.message,
+            users: username,
+            socketid: socket.id,
+            chatrooms: [chatroom],  // assuming chatroom is the ID of the chatroom
           },
         };
-        var axios = require("axios");
+
+        await axios
+          .post("http://localhost:1337/api/active-users", strapiData)
+          .then(async (e) => {
+            socket.emit("roomData", { done: "true" });
+          })
+          .catch((e) => {
+            if (e.message == "Request failed with status code 400") {
+              socket.emit("roomData", { done: "existing" });
+            }
+          });
+      });
+
+      socket.on("sendMessage", async (data) => {
+        const { user, message, chatroom } = data.data; // Extract properties from data.data
+      
+        if (!message || !user || !chatroom) {
+          console.log("Missing message, username, or chatroom for sendMessage event");
+          return;
+        }
+      
+        let strapiData = {
+          data: {
+            user: user,
+            message: message,
+            chatroom: chatroom,
+          },
+        };
+      
         await axios
           .post("http://localhost:1337/api/messages", strapiData)
           .then((e) => {
-            socket.broadcast.to("group").emit("message", {
-              user: data.username,
-              text: data.message,
+            socket.broadcast.to(chatroom).emit("message", {
+              user: user,
+              text: message,
             });
           })
           .catch((e) => console.log("error", e.message));
       });
+      
+
+      socket.on("privateMessage", async ({ recipient, message }) => {
+        if (!recipient || !message || !userState.username) {
+          console.log("Missing recipient, message, or username for privateMessage event");
+          return;
+        }
+
+        // Sending a private message to the recipient
+        socket.broadcast.to(recipient).emit("privateMessage", {
+          sender: userState.username,
+          text: message,
+        });
+      });
+
       socket.on("kick", (data) => {
         io.sockets.sockets.forEach((socket) => {
           if (socket.id === data.socketid) {
